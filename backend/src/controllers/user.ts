@@ -1,6 +1,9 @@
 import {Request, Response, NextFunction} from "express";
 import user from "../models/user.js";
 import {hash, compare} from "bcrypt";
+import { createToken } from "../utils/token.js";
+import { COOKIE_NAME } from "../utils/constants.js";
+
 
 export const getAllUsers = async (req:Request, res:Response, next:NextFunction) => {
     //fetch all users
@@ -22,6 +25,15 @@ export const userSignup = async (req:Request, res:Response, next:NextFunction) =
         const hashedPassword = await hash(password, 10);
         const _user = new user({name, email, password:hashedPassword});
         await _user.save();
+
+        //clear cookies, create token and store signed cookie
+        res.clearCookie(COOKIE_NAME, {path:"/", domain:"localhost", httpOnly:true, signed: true});
+
+        const token = createToken(_user._id.toString(), _user.email, "7d");
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 7);
+        res.cookie(COOKIE_NAME,token,{path:"/", domain:"localhost", expires, httpOnly:true, signed: true});
+
         return res.status(201).json({message:"Ok", id:_user._id.toString()});
     } catch (error) {
         console.log(error);
@@ -42,6 +54,14 @@ export const userLogin = async (req:Request, res:Response, next:NextFunction) =>
         if (!isPwdCorrect){
             return res.status(403).send("Incorrect Password");
         }
+
+        //clear cookies, create token and store signed cookie
+        res.clearCookie(COOKIE_NAME, {path:"/", domain:"localhost", httpOnly:true, signed: true});
+
+        const token = createToken(_user._id.toString(), _user.email, "7d");
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 7);
+        res.cookie(COOKIE_NAME,token,{path:"/", domain:"localhost", expires, httpOnly:true, signed: true});
 
         return res.status(201).json({message: "Ok", id: _user._id.toString()});
     } catch (error) {
